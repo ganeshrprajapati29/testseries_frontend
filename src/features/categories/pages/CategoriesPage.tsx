@@ -1,6 +1,6 @@
 import { ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { categoryUrl, pyqExamUrl, pyqSubjectUrl } from '@/app/constants';
+import { categoryUrl, pyqCategoryUrl } from '@/app/constants';
 import { categoryIcon } from '@/components/categories/categoryIcons';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
@@ -81,7 +81,7 @@ export default function CategoriesPage() {
       ) : (
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {pyqs.data?.map((n) => (
-            <ExamBlock key={n._id} node={n} linkFor={(c) => (c.depth === 0 ? pyqExamUrl(c.slug) : pyqSubjectUrl(c.path.split('/')[0]!, c.slug))} />
+            <ExamBlock key={n._id} node={n} linkFor={(c) => pyqCategoryUrl(c.path || c.slug)} />
           ))}
         </div>
       )}

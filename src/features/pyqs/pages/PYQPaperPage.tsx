@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
-import { pyqExamUrl, pyqSubjectUrl, ROUTES } from '@/app/constants';
+import { pyqCategoryUrl, ROUTES } from '@/app/constants';
 import { ErrorState } from '@/components/common/ErrorState';
 import { Loader } from '@/components/common/Loader';
 import { Breadcrumbs, type Crumb } from '@/components/layout/Breadcrumbs';
@@ -21,11 +21,8 @@ export default function PYQPaperPage() {
       </div>
     );
 
-  const [exam, subject] = data.breadcrumb;
-  const crumbs: Crumb[] = [{ label: 'PYQs', to: ROUTES.pyqs }];
-  if (exam) crumbs.push({ label: exam.name, to: pyqExamUrl(exam.slug) });
-  if (exam && subject) crumbs.push({ label: subject.name, to: pyqSubjectUrl(exam.slug, subject.slug) });
-  crumbs.push({ label: data.title });
+  // Every level of the PYQ tree (exam › year › subject ...) links to its own page.
+  const crumbs: Crumb[] = [{ label: 'PYQs', to: ROUTES.pyqs }, ...data.breadcrumb.map((b) => ({ label: b.name, to: pyqCategoryUrl(b.path) })), { label: data.title }];
 
   return (
     <div className="container-page py-8">

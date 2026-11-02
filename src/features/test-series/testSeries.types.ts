@@ -25,3 +25,19 @@ export interface CreateOrderResponse {
   seriesTitle: string;
   prefill: { name: string; email: string; contact: string };
 }
+
+/** A published test that sits directly in a category (no series) - e.g. an automatic practice set. */
+export interface CategoryTest {
+  _id: string;
+  title: string;
+  hi?: { title?: string };
+  slug: string;
+  description: string;
+  testType: string;
+  durationSeconds: number;
+  totalMarks: number;
+  isFree: boolean;
+  languageOptions: string[];
+  questionCount: number;
+  isPracticeSet: boolean;
+}

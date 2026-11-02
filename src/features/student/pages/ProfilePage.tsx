@@ -56,7 +56,7 @@ function ProfileSection() {
       <form onSubmit={onSubmit} noValidate className="mt-5 grid gap-4 sm:grid-cols-2">
         <Input label="Full name" error={errors.name?.message} {...register('name')} />
         <Input label="Email" value={user?.email ?? ''} disabled hint="Contact support to change your email." readOnly />
-        <Input label="Mobile number" type="tel" error={errors.mobile?.message} {...register('mobile')} />
+        <Input label="Mobile number" type="tel" inputMode="numeric" maxLength={14} required placeholder="10 digit mobile number" error={errors.mobile?.message} {...register('mobile')} />
         <Select
           label="Preferred test language"
           options={[

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, ExternalLink, Pencil, Plus } from 'lucide-react';
+import { ArrowLeft, ExternalLink, FolderTree, Pencil, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { seriesUrl } from '@/app/constants';
@@ -51,8 +51,19 @@ export default function AdminSeriesDetailPage() {
               {series.isFeatured && <Badge tone="purple">Featured</Badge>}
             </div>
             <h1 className="mt-2 text-2xl font-bold">{series.title}</h1>
-            <p className="text-sm text-slate-500">
-              {typeof series.categoryId === 'object' ? series.categoryId.name : ''} • {tests.length} tests • {series.validityDays} days validity
+            {series.hi?.title && (
+              <p className="text-sm text-slate-600" lang="hi">
+                {series.hi.title}
+              </p>
+            )}
+            <p className="mt-1 flex flex-wrap items-center gap-1 text-sm text-slate-500">
+              <FolderTree className="h-3.5 w-3.5" />
+              <Link to={`/admin/questions?category=${typeof series.categoryId === 'object' ? series.categoryId._id : series.categoryId}`} className="font-medium text-brand-700 hover:underline" title="Questions in this category">
+                {series.categoryLabel || (typeof series.categoryId === 'object' ? series.categoryId.name : '')}
+              </Link>
+              <span>
+                • {tests.length} tests • {series.validityDays} days validity
+              </span>
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -100,9 +111,18 @@ export default function AdminSeriesDetailPage() {
                   {t.title}
                 </Link>
                 <p className="text-xs text-slate-500">
-                  {TEST_TYPE_LABELS[t.testType]} • {t.questionCount ?? 0} questions • {formatScore(t.totalMarks)} marks • {formatDuration(t.durationSeconds)}
+                  {TEST_TYPE_LABELS[t.testType]} •{' '}
+                  {t.questionCount ? (
+                    <Link to={`/admin/questions?testId=${t._id}`} className="font-semibold text-brand-700 hover:underline" title="View these questions in the Question Bank">
+                      {t.questionCount} questions
+                    </Link>
+                  ) : (
+                    <span className="font-semibold text-amber-700">no questions yet</span>
+                  )}{' '}
+                  • {formatScore(t.totalMarks)} marks • {formatDuration(t.durationSeconds)}
                   {t.isFree && ' • Free'}
                 </p>
+                {t.categoryLabel && t.categoryLabel !== series.categoryLabel && <p className="text-[11px] text-slate-400">Category: {t.categoryLabel}</p>}
               </div>
               <StatusBadge status={t.publicationStatus} />
               <Button size="sm" variant="secondary" onClick={() => navigate(`/admin/tests/${t._id}`)}>

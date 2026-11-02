@@ -10,6 +10,11 @@ export const passwordRule = z
 
 export const emailRule = z.string().trim().min(1, 'Email is required').email('Enter a valid email address');
 
+export const MOBILE_RE = /^(\+91[-\s]?)?[6-9]\d{9}$/;
+
+/** Required 10 digit Indian mobile number (an optional +91 prefix is accepted). */
+export const mobileRule = z.string().trim().min(1, 'Mobile number is required').regex(MOBILE_RE, 'Enter a valid 10 digit mobile number');
+
 export const loginSchema = z.object({
   email: emailRule,
   password: z.string().min(1, 'Password is required'),
@@ -19,10 +24,7 @@ export const registerSchema = z
   .object({
     name: z.string().trim().min(2, 'Name must be at least 2 characters').max(100),
     email: emailRule,
-    mobile: z
-      .string()
-      .trim()
-      .refine((v) => v === '' || /^(\+91[-\s]?)?[6-9]\d{9}$/.test(v), 'Enter a valid 10 digit mobile number'),
+    mobile: mobileRule,
     password: passwordRule,
     confirmPassword: z.string(),
     acceptTerms: z.literal(true, { message: 'Please accept the terms to continue' }),
@@ -45,10 +47,7 @@ export const changePasswordSchema = z
 
 export const profileSchema = z.object({
   name: z.string().trim().min(2, 'Name must be at least 2 characters').max(100),
-  mobile: z
-    .string()
-    .trim()
-    .refine((v) => v === '' || /^(\+91[-\s]?)?[6-9]\d{9}$/.test(v), 'Enter a valid 10 digit mobile number'),
+  mobile: mobileRule,
   preferredLanguage: z.enum(['en', 'hi']),
 });
 

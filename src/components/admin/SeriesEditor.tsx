@@ -1,20 +1,30 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { adminApi } from '@/features/admin/admin.api';
 import type { AdminSeries } from '@/features/admin/admin.types';
-import { fromLocalInput, ImageField, toLocalInput, Toggle } from '@/features/admin/components/formHelpers';
+import { fromLocalInput, toLocalInput, Toggle } from '@/features/admin/components/formHelpers';
 import { useAdminMutation } from '@/features/admin/hooks/useAdminMutation';
 import { FormAlert } from '@/features/auth/components/AuthCard';
 import { useServerErrors } from '@/features/auth/hooks/useServerErrors';
-import { flattenTree } from '@/features/categories/categories.api';
 import type { ModuleType } from '@/types';
 import { Button } from '../common/Button';
 import { Input, Textarea } from '../common/Input';
 import { Modal } from '../common/Modal';
 import { Select } from '../common/Select';
+import { useToast } from '../common/Toast';
+import { CategoryTreeSelect } from './CategoryPicker';
+import { HindiPanel, TranslateButton, useTranslationEnabled } from './HindiTranslate';
+import { SingleImageUploader } from './MediaUploader';
+
+/** Textarea with one item per line -> trimmed list (max 12). */
+const lines = (v: string) =>
+  v
+    .split('\n')
+    .map((h) => h.trim())
+    .filter(Boolean)
+    .slice(0, 12);
 
 const schema = z
   .object({
@@ -35,6 +45,10 @@ const schema = z
     availableUntil: z.string(),
     isFeatured: z.boolean(),
     sortOrder: z.coerce.number<number>().int().min(0),
+    hiTitle: z.string().max(400),
+    hiDescription: z.string().max(15000),
+    hiHighlights: z.string().max(5000),
+    autoTranslate: z.boolean(),
   })
   .refine((d) => d.english || d.hindi, { message: 'Select at least one language', path: ['english'] })
   .refine((d) => d.accessType === 'free' || d.price > 0, { message: 'Enter a price for a paid series', path: ['price'] });
@@ -43,17 +57,20 @@ type FormValues = z.infer<typeof schema>;
 
 export function SeriesEditor({ open, onClose, series, moduleType = 'TEST_SERIES', onSaved }: { open: boolean; onClose: () => void; series?: AdminSeries | null; moduleType?: ModuleType; onSaved?: (s: AdminSeries) => void }) {
   const isEdit = !!series;
-  const categories = useQuery({ queryKey: ['admin', 'categories', moduleType], queryFn: () => adminApi.categories(moduleType), enabled: open });
   const {
     register,
     handleSubmit,
     reset,
     watch,
     control,
+    setValue,
+    getValues,
     setError,
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
   const { formError, setFormError, handle } = useServerErrors(setError);
+  const translationOn = useTranslationEnabled();
+  const toast = useToast();
 
   useEffect(() => {
     if (!open) return;
@@ -76,6 +93,10 @@ export function SeriesEditor({ open, onClose, series, moduleType = 'TEST_SERIES'
       availableUntil: toLocalInput(series?.availableUntil),
       isFeatured: series?.isFeatured ?? false,
       sortOrder: series?.sortOrder ?? 0,
+      hiTitle: series?.hi?.title ?? '',
+      hiDescription: series?.hi?.description ?? '',
+      hiHighlights: series?.hi?.highlights?.join('\n') ?? '',
+      autoTranslate: true,
     });
   }, [open, series, reset, setFormError]);
 
@@ -88,11 +109,7 @@ export function SeriesEditor({ open, onClose, series, moduleType = 'TEST_SERIES'
         examName: v.examName,
         subject: v.subject,
         description: v.description,
-        highlights: v.highlights
-          .split('\n')
-          .map((h) => h.trim())
-          .filter(Boolean)
-          .slice(0, 12),
+        highlights: lines(v.highlights),
         coverImage: v.coverImage,
         languageOptions: [...(v.english ? ['en'] : []), ...(v.hindi ? ['hi'] : [])],
         accessType: v.accessType,
@@ -103,13 +120,16 @@ export function SeriesEditor({ open, onClose, series, moduleType = 'TEST_SERIES'
         availableUntil: fromLocalInput(v.availableUntil),
         isFeatured: v.isFeatured,
         sortOrder: v.sortOrder,
+        hi: { title: v.hiTitle.trim(), description: v.hiDescription.trim(), highlights: lines(v.hiHighlights) },
+        autoTranslate: v.autoTranslate && translationOn,
       };
       return isEdit ? adminApi.updateSeries(series!._id, body) : adminApi.createSeries(body);
     },
     {
       success: isEdit ? 'Test series updated' : 'Test series created as draft',
       silentError: true,
-      onSuccess: (s) => {
+      onSuccess: (s, v) => {
+        if (v.autoTranslate && translationOn && !s.hi?.title) toast.info('Saved in English only - Hindi auto translation is unavailable right now.');
         onSaved?.(s);
         onClose();
       },
@@ -145,7 +165,13 @@ export function SeriesEditor({ open, onClose, series, moduleType = 'TEST_SERIES'
         <div className="md:col-span-2">
           <Input label="Title" required error={errors.title?.message} {...register('title')} />
         </div>
-        <Select label="Category" required placeholder={categories.isLoading ? 'Loading...' : 'Select category'} options={flattenTree(categories.data ?? []).map(({ value, label }) => ({ value, label }))} error={errors.categoryId?.message} {...register('categoryId')} />
+        <Controller
+          control={control}
+          name="categoryId"
+          render={({ field }) => (
+            <CategoryTreeSelect label="Category" required value={field.value ?? ''} onChange={field.onChange} moduleType={moduleType} error={errors.categoryId?.message} hint="The series is listed under this category on the website" />
+          )}
+        />
         <Input label="Exam name" placeholder="e.g. UPSC CSE Prelims 2027" {...register('examName')} />
         <Input label="Subject" placeholder="Optional" {...register('subject')} />
         <Input label="Display order" type="number" min={0} {...register('sortOrder')} />
@@ -155,7 +181,7 @@ export function SeriesEditor({ open, onClose, series, moduleType = 'TEST_SERIES'
         <div className="md:col-span-2">
           <Textarea label="Highlights" rows={3} hint="One per line, shown as bullet points" {...register('highlights')} />
         </div>
-        <Controller control={control} name="coverImage" render={({ field }) => <ImageField label="Cover image" folder="covers" value={field.value} onChange={field.onChange} />} />
+        <Controller control={control} name="coverImage" render={({ field }) => <SingleImageUploader label="Cover image" folder="covers" value={field.value} onChange={field.onChange} hint="Recommended 1600 × 800 px" />} />
         <div>
           <span className="label">Languages</span>
           <div className="flex gap-4 pt-2">
@@ -185,6 +211,32 @@ export function SeriesEditor({ open, onClose, series, moduleType = 'TEST_SERIES'
         )}
         <Input label="Available from" type="datetime-local" hint="Optional" {...register('availableFrom')} />
         <Input label="Available until" type="datetime-local" hint="Optional" error={errors.availableUntil?.message} {...register('availableUntil')} />
+        <div className="md:col-span-2">
+          <Controller
+            control={control}
+            name="autoTranslate"
+            render={({ field }) => (
+              <HindiPanel
+                autoTranslate={field.value}
+                onAutoTranslate={field.onChange}
+                actions={
+                  <TranslateButton
+                    getTexts={() => [getValues('title'), getValues('description'), ...lines(getValues('highlights'))]}
+                    onTranslated={([t, d, ...h]) => {
+                      setValue('hiTitle', t ?? '', { shouldDirty: true });
+                      setValue('hiDescription', d ?? '', { shouldDirty: true });
+                      setValue('hiHighlights', h.filter(Boolean).join('\n'), { shouldDirty: true });
+                    }}
+                  />
+                }
+              >
+                <Input label="Title in Hindi" lang="hi" error={errors.hiTitle?.message} {...register('hiTitle')} />
+                <Textarea label="Description in Hindi" lang="hi" rows={3} {...register('hiDescription')} />
+                <Textarea label="Highlights in Hindi" lang="hi" rows={3} hint="One per line" {...register('hiHighlights')} />
+              </HindiPanel>
+            )}
+          />
+        </div>
         <div className="md:col-span-2">
           <Controller control={control} name="isFeatured" render={({ field }) => <Toggle checked={field.value} onChange={field.onChange} label="Featured" description="Show on the home page." />} />
         </div>

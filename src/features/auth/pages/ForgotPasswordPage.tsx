@@ -48,6 +48,7 @@ export default function ForgotPasswordPage({ admin }: { admin?: boolean }) {
           <MailCheck className="mx-auto h-12 w-12 text-emerald-500" />
           <p className="mt-3 text-sm text-slate-600">{sent}</p>
           <p className="mt-2 text-xs text-slate-500">The link is valid for 30 minutes. Check your spam folder if you do not see it.</p>
+          {admin && <p className="mt-2 text-xs text-slate-500">No email? A super admin can reset your password from My Account → Admin accounts.</p>}
         </div>
       ) : (
         <>

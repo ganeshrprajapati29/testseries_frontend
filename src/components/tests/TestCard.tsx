@@ -1,4 +1,4 @@
-import { CalendarClock, Clock, FileQuestion, Lock, PlayCircle, RotateCcw, Trophy } from 'lucide-react';
+import { CalendarClock, Clock, FileDown, FileQuestion, Lock, PlayCircle, RotateCcw, Trophy } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { instructionsUrl, resultUrl, testUrl } from '@/app/constants';
 import { formatDateTime, formatDuration, formatScore, TEST_TYPE_LABELS } from '@/lib/formatters';
@@ -68,7 +68,17 @@ export function TestCard({ test, isLoggedIn }: { test: SeriesTest; isLoggedIn: b
           {test.isFree && test.locked === false && <Badge tone="green">Free</Badge>}
           {test.locked && <Badge tone="orange">Paid</Badge>}
           <Badge tone="gray">{TEST_TYPE_LABELS[test.testType] ?? test.testType}</Badge>
+          {test.hasQuestionPaperPdf && (
+            <Badge tone="red">
+              <FileDown className="h-3 w-3" /> PDF
+            </Badge>
+          )}
         </div>
+        {test.hi?.title && (
+          <p lang="hi" className="text-sm text-slate-500">
+            {test.hi.title}
+          </p>
+        )}
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
           <span className="flex items-center gap-1">
             <FileQuestion className="h-3.5 w-3.5" /> {test.questionCount} Qs

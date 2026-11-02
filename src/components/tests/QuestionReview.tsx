@@ -1,10 +1,12 @@
 import { CheckCircle2, Clock, Lightbulb, MinusCircle, XCircle } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { formatDuration, formatScore } from '@/lib/formatters';
 import { cn, OPTION_LABELS } from '@/lib/utils';
 import type { Language, SolutionQuestion } from '@/types';
 import { Badge } from '../common/Badge';
+import { ImageGallery } from '../common/ImageGallery';
 
-export function QuestionReview({ q, language }: { q: SolutionQuestion; language: Language }) {
+export function QuestionReview({ q, language, actions, footer }: { q: SolutionQuestion; language: Language; actions?: ReactNode; footer?: ReactNode }) {
   const t = q.translations.find((tr) => tr.language === language);
   const questionText = t?.questionText || q.questionText;
   const explanation = t?.explanation || q.explanation;
@@ -34,10 +36,11 @@ export function QuestionReview({ q, language }: { q: SolutionQuestion; language:
               <Clock className="h-3 w-3" /> {formatDuration(q.timeSpentSeconds)}
             </span>
           )}
+          {actions}
         </div>
       </header>
       <p className="prose-text">{questionText}</p>
-      {q.imageUrl && <img src={q.imageUrl} alt="Question figure" className="mt-3 max-h-72 rounded-lg border" />}
+      <ImageGallery images={q.images?.length ? q.images : [q.imageUrl]} className="mt-3 max-w-2xl" />
       <ul className="mt-4 space-y-2">
         {q.options.map((opt, i) => {
           const isCorrect = opt.key === q.correctOption;
@@ -70,8 +73,11 @@ export function QuestionReview({ q, language }: { q: SolutionQuestion; language:
             <Lightbulb className="h-4 w-4" /> Explanation
           </p>
           <p className="prose-text text-sm text-slate-700">{explanation}</p>
+          <ImageGallery images={q.explanationImages ?? []} className="mt-3 max-w-2xl" compact />
         </div>
       )}
+      {!explanation && (q.explanationImages?.length ?? 0) > 0 && <ImageGallery images={q.explanationImages} className="mt-4 max-w-2xl" compact />}
+      {footer}
     </article>
   );
 }

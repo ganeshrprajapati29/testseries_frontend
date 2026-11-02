@@ -12,6 +12,7 @@ import { ExamNavigation } from '@/components/tests/ExamNavigation';
 import { ExamTimer, remainingSecondsFor } from '@/components/tests/ExamTimer';
 import { QuestionCard } from '@/components/tests/QuestionCard';
 import { QuestionPalette } from '@/components/tests/QuestionPalette';
+import { ReportQuestionButton, useMyReports } from '@/components/tests/ReportQuestion';
 import { SubmitTestDialog } from '@/components/tests/SubmitTestDialog';
 import { useSettings } from '@/hooks/useSettings';
 import { errorMessage } from '@/services/apiClient';
@@ -96,6 +97,7 @@ export default function ExamPage() {
   const questions = useMemo(() => data?.questions ?? [], [data]);
   const questionIds = useMemo(() => questions.map((q) => q.id), [questions]);
   const current = questions[index];
+  const reports = useMyReports(attemptId);
   const currentAnswer = current ? answers[current.id] : undefined;
 
   // Mark the current question as visited.
@@ -233,9 +235,12 @@ export default function ExamPage() {
         <main className="flex min-w-0 flex-1 flex-col">
           <div className="mb-3 flex items-center justify-between gap-2">
             <LanguageSelector value={language} options={attempt.languageOptions} onChange={changeLanguage} />
-            <button type="button" onClick={() => setPaletteOpen(true)} className="ml-auto flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium lg:hidden">
-              <LayoutGrid className="h-4 w-4" /> Questions
-            </button>
+            <div className="ml-auto flex items-center gap-2">
+              <ReportQuestionButton attemptId={attemptId} questionId={current.id} questionNumber={index + 1} report={reports.get(current.id)} hideAnswerReason />
+              <button type="button" onClick={() => setPaletteOpen(true)} className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium lg:hidden">
+                <LayoutGrid className="h-4 w-4" /> Questions
+              </button>
+            </div>
           </div>
           <div className="card flex-1 p-4 sm:p-6">
             <QuestionCard

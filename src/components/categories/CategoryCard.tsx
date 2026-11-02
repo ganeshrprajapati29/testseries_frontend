@@ -8,12 +8,13 @@ interface CategoryCardProps {
   name: string;
   slug: string;
   icon?: string;
+  imageUrl?: string;
   subtitle?: string;
   children?: { name: string }[];
   compact?: boolean;
 }
 
-export function CategoryCard({ to, name, slug, icon, subtitle, children, compact }: CategoryCardProps) {
+export function CategoryCard({ to, name, slug, icon, imageUrl, subtitle, children, compact }: CategoryCardProps) {
   const Icon = categoryIcon(icon, slug);
   return (
     <Link
@@ -24,7 +25,7 @@ export function CategoryCard({ to, name, slug, icon, subtitle, children, compact
       )}
     >
       <div className={cn('flex shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 transition group-hover:bg-brand-600 group-hover:text-white', compact ? 'h-10 w-10' : 'h-12 w-12')}>
-        <Icon className={compact ? 'h-5 w-5' : 'h-6 w-6'} aria-hidden />
+        {imageUrl ? <img src={imageUrl} alt="" className="h-full w-full rounded-xl object-cover" loading="lazy" /> : <Icon className={compact ? 'h-5 w-5' : 'h-6 w-6'} aria-hidden />}
       </div>
       <div className="min-w-0 flex-1">
         <h3 className="truncate font-semibold text-slate-900">{name}</h3>

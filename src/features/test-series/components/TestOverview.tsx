@@ -1,12 +1,82 @@
-import { CalendarClock, Clock, FileQuestion, Lock, MinusCircle, PlayCircle, RotateCcw, Trophy } from 'lucide-react';
+import { CalendarClock, Clock, Download, Eye, FileQuestion, FileText, Lock, MinusCircle, PlayCircle, Printer, RotateCcw, Trophy } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { instructionsUrl, resultUrl, ROUTES, seriesUrl } from '@/app/constants';
 import { Badge } from '@/components/common/Badge';
-import { ButtonLink } from '@/components/common/Button';
+import { buttonClasses, ButtonLink } from '@/components/common/Button';
 import { StatusBadge } from '@/components/admin/StatusBadge';
 import { useAuth } from '@/features/auth/useAuth';
 import { formatDateTime, formatDuration, formatScore, TEST_TYPE_LABELS } from '@/lib/formatters';
 import type { TestDetail } from '@/types';
+import { testSeriesApi } from '../testSeries.api';
+
+function fileSize(bytes: number) {
+  return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+/** Question paper / solutions PDFs and the printable paper (Testbook-style "Download PDF"). */
+function PaperDownloads({ test }: { test: TestDetail }) {
+  const { user, isAdmin } = useAuth();
+  const qp = test.pdfs?.questionPaper;
+  const sol = test.pdfs?.solutions;
+  if (isAdmin) return null;
+  if (!qp && !sol && !test.canViewPaper && !user) return null;
+
+  const row = (label: string, file: { fileName: string; size: number; canDownload: boolean }, kind: 'question-paper' | 'solutions', lockedText: string) => (
+    <li className="flex flex-wrap items-center gap-3 py-3">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-600">
+        <FileText className="h-5 w-5" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold">{label}</p>
+        <p className="truncate text-xs text-slate-500">
+          {file.fileName} • {fileSize(file.size)}
+        </p>
+      </div>
+      {file.canDownload ? (
+        <div className="flex gap-2">
+          <a href={testSeriesApi.pdfUrl(test.slug, kind)} target="_blank" rel="noopener noreferrer" className={buttonClasses('outline', 'sm')}>
+            <Eye className="h-3.5 w-3.5" /> View
+          </a>
+          <a href={testSeriesApi.pdfUrl(test.slug, kind, true)} className={buttonClasses('primary', 'sm')}>
+            <Download className="h-3.5 w-3.5" /> Download
+          </a>
+        </div>
+      ) : (
+        <span className="flex items-center gap-1 text-xs font-medium text-slate-500">
+          <Lock className="h-3.5 w-3.5" /> {lockedText}
+        </span>
+      )}
+    </li>
+  );
+
+  return (
+    <div className="card p-5">
+      <h2 className="mb-1 flex items-center gap-2 font-semibold">
+        <FileText className="h-4 w-4 text-red-600" /> Question paper & solutions
+      </h2>
+      <ul className="divide-y divide-slate-100">
+        {qp && row('Question paper PDF', qp, 'question-paper', user ? 'Unlock the test to download' : 'Login to download')}
+        {sol && row('Solutions PDF', sol, 'solutions', test.paperLockedReason || 'Available after you submit')}
+        <li className="flex flex-wrap items-center gap-3 py-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+            <Printer className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold">Printable paper with answer key</p>
+            <p className="text-xs text-slate-500">{test.canViewPaper ? 'View, print or save as PDF (with figures and Hindi).' : test.paperLockedReason || 'Sign in to view.'}</p>
+          </div>
+          {test.canViewPaper ? (
+            <Link to={`/tests/${test.slug}/paper`} className={buttonClasses('secondary', 'sm')}>
+              <Printer className="h-3.5 w-3.5" /> Open paper
+            </Link>
+          ) : (
+            <Lock className="h-4 w-4 text-slate-400" />
+          )}
+        </li>
+      </ul>
+    </div>
+  );
+}
 
 /** Shared by the Test detail page and the PYQ paper page. */
 export function TestOverview({ test }: { test: TestDetail }) {
@@ -59,6 +129,11 @@ export function TestOverview({ test }: { test: TestDetail }) {
             {test.isFree && <Badge tone="green">Free</Badge>}
           </div>
           <h1 className="mt-3 text-3xl font-bold">{test.title}</h1>
+          {test.hi?.title && (
+            <p lang="hi" className="mt-1 text-lg text-slate-600">
+              {test.hi.title}
+            </p>
+          )}
           {test.series && (
             <p className="mt-1 text-sm text-slate-500">
               Part of{' '}
@@ -83,6 +158,7 @@ export function TestOverview({ test }: { test: TestDetail }) {
             <p className="prose-text text-sm">{test.description}</p>
           </div>
         )}
+        <PaperDownloads test={test} />
         {completed.length > 0 && (
           <div className="card overflow-hidden">
             <h2 className="border-b border-slate-100 px-5 py-3 font-semibold">Your attempts</h2>

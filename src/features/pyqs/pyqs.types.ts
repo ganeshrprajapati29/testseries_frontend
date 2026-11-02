@@ -1,5 +1,6 @@
 import type { Breadcrumb, CategoryNode, Language } from '@/types';
 
+
 export interface PyqExamNode extends CategoryNode {
   paperCount: number;
   children: PyqExamNode[];
@@ -8,6 +9,7 @@ export interface PyqExamNode extends CategoryNode {
 export interface PyqPaper {
   _id: string;
   title: string;
+  hi?: { title?: string };
   slug: string;
   description: string;
   paperYear: number | null;
@@ -18,6 +20,8 @@ export interface PyqPaper {
   totalMarks: number;
   languageOptions: Language[];
   questionCount: number;
+  hasQuestionPaperPdf?: boolean;
+  hasSolutionPdf?: boolean;
   subject?: { _id: string; name: string; slug: string };
 }
 
@@ -26,6 +30,7 @@ export interface PyqCategoryData {
   breadcrumb: Breadcrumb[];
   children: { _id: string; name: string; slug: string; path: string; paperCount: number }[];
   paperCount: number;
-  years: number[];
-  papersByYear: { year: number | null; papers: PyqPaper[] }[];
+  years: { year: number; count: number }[];
+  papers: PyqPaper[];
+  meta: import('@/types').PageMeta;
 }

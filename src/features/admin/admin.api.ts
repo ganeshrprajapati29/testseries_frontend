@@ -1,18 +1,28 @@
+import { API_BASE_URL } from '@/lib/axios';
 import { api } from '@/services/apiClient';
-import type { CategoryNode, ModuleType, Question, SolutionsData } from '@/types';
+import type { CategoryNode, ModuleType, PdfRef, PrintablePaper, Question, QuestionCategory, ReportStatus, SolutionsData } from '@/types';
 import type {
   AdminAttempt,
   AdminDashboardData,
   AdminOrder,
   AdminResult,
   AdminSeries,
+  AdminAccount,
+  AdminQuestionReport,
+  AdminRole,
+  QuestionUsage,
+  QuestionWebsiteLink,
   AdminStudent,
+  ReportGroup,
+  StudentFormInput,
+  StudentStats,
   AdminTest,
   AuditLog,
   ImportJob,
 } from './admin.types';
 
 type Params = Record<string, string | number | boolean | undefined | null>;
+export type ImageFolder = 'questions' | 'covers' | 'categories' | 'misc';
 
 export const adminApi = {
   dashboard: () => api.get<AdminDashboardData>('/admin/dashboard'),
@@ -49,24 +59,37 @@ export const adminApi = {
 
   // Questions
   questions: (params: Params) => api.page<Question>('/admin/questions', params),
-  questionFacets: () => api.get<{ subjects: string[]; sourceExams: string[]; years: number[] }>('/admin/questions/facets'),
-  question: (id: string) => api.get<Question & { tests: { _id: string; title: string; publicationStatus: string }[] }>(`/admin/questions/${id}`),
+  questionFacets: () => api.get<{ total: number; uncategorized: number; subjects: string[]; sourceExams: string[]; years: number[] }>('/admin/questions/facets'),
+  bulkQuestionCategories: (questionIds: string[], categoryIds: string[], mode: 'add' | 'replace' | 'remove') =>
+    api.post<{ updated: number }>('/admin/questions/bulk-categories', { questionIds, categoryIds, mode }),
+  question: (id: string) =>
+    api.get<Omit<Question, 'categories'> & { tests: QuestionUsage[]; websiteLinks: QuestionWebsiteLink[]; categories: (QuestionCategory & { siteUrl: string | null })[] }>(`/admin/questions/${id}`),
   createQuestion: (body: unknown) => api.post<Question>('/admin/questions', body),
   updateQuestion: (id: string, body: unknown) => api.patch<Question>(`/admin/questions/${id}`, body),
   archiveQuestion: (id: string) => api.post<Question>(`/admin/questions/${id}/archive`),
   restoreQuestion: (id: string) => api.post<Question>(`/admin/questions/${id}/restore`),
   deleteQuestion: (id: string) => api.delete(`/admin/questions/${id}`),
-  uploadImage: (file: File, folder: 'questions' | 'covers' = 'questions') => {
+  uploadImages: (files: File[], folder: ImageFolder = 'questions') => {
+    const form = new FormData();
+    files.forEach((f) => form.append('files', f));
+    return api.upload<{ files: { url: string; key: string }[] }>(`/admin/uploads/images?folder=${folder}`, form);
+  },
+  importImageFromUrl: (url: string, folder: ImageFolder = 'questions') => api.post<{ files: { url: string; key: string }[] }>('/admin/uploads/images/from-url', { url, folder }),
+  uploadPdf: (file: File) => {
     const form = new FormData();
     form.append('file', file);
-    return api.upload<{ url: string; key: string }>(`/admin/questions/upload-image?folder=${folder}`, form);
+    return api.upload<PdfRef>('/admin/uploads/pdf', form);
   },
+  importPdfFromUrl: (url: string) => api.post<PdfRef>('/admin/uploads/pdf/from-url', { url }),
+  testPaper: (id: string) => api.get<PrintablePaper>(`/admin/tests/${id}/paper`),
+  testPdfUrl: (id: string, kind: 'question-paper' | 'solutions') => `${API_BASE_URL}/admin/tests/${id}/pdf/${kind}`,
 
   // Imports
   imports: (params: Params) => api.page<ImportJob>('/admin/imports', params),
   importJob: (id: string) => api.get<ImportJob>(`/admin/imports/${id}`),
   uploadImport: (form: FormData) => api.upload<ImportJob>('/admin/imports', form),
-  commitImport: (id: string, skipDuplicates: boolean) => api.post<{ importedCount: number; skipped: number }>(`/admin/imports/${id}/commit`, { skipDuplicates }),
+  commitImport: (id: string, skipDuplicates: boolean, autoTranslate = false) =>
+    api.postWithMessage<{ importedCount: number; skipped: number; linkedExisting?: number; translating?: boolean }>(`/admin/imports/${id}/commit`, { skipDuplicates, autoTranslate }),
   cancelImport: (id: string) => api.post(`/admin/imports/${id}/cancel`),
   downloadTemplate: () => api.download('/admin/imports/template', 'civil-sansad-question-template.csv'),
 
@@ -79,9 +102,35 @@ export const adminApi = {
       results: AdminResult[];
       attemptCount: number;
     }>(`/admin/students/${id}`),
+  studentStats: () => api.get<StudentStats>('/admin/students/stats'),
+  createStudent: (body: StudentFormInput & { password: string }) => api.post<AdminStudent>('/admin/students', body),
+  updateStudent: (id: string, body: Partial<StudentFormInput>) => api.patch<AdminStudent>(`/admin/students/${id}`, body),
+  resetStudentPassword: (id: string, password: string) => api.post(`/admin/students/${id}/reset-password`, { password }),
+  deleteStudent: (id: string) => api.delete<{ removed: { attempts: number; results: number; enrollments: number } }>(`/admin/students/${id}`),
+  exportStudents: (params: Params) => api.download('/admin/students/export', `students-${new Date().toISOString().slice(0, 10)}.csv`, params),
   setStudentStatus: (id: string, accountStatus: string) => api.patch(`/admin/students/${id}/status`, { accountStatus }),
   grantAccess: (id: string, testSeriesId: string, validityDays?: number) => api.post(`/admin/students/${id}/access`, { testSeriesId, validityDays }),
   revokeAccess: (id: string, seriesId: string) => api.delete(`/admin/students/${id}/access/${seriesId}`),
+
+  // Admin accounts (super admin)
+  admins: () => api.get<AdminAccount[]>('/admin/admins'),
+  createAdmin: (body: { name: string; email: string; password: string; role: AdminRole }) => api.post<AdminAccount>('/admin/admins', body),
+  updateAdmin: (id: string, body: Partial<{ name: string; email: string; role: AdminRole; accountStatus: string }>) => api.patch<AdminAccount>(`/admin/admins/${id}`, body),
+  resetAdminPassword: (id: string, password: string) => api.post(`/admin/admins/${id}/reset-password`, { password }),
+
+  // Reported questions
+  questionReportCounts: () => api.get<{ open: number; resolved: number; dismissed: number; openQuestions: number }>('/admin/question-reports/counts'),
+  questionReports: (params: Params) => api.page<ReportGroup>('/admin/question-reports', params),
+  reportsForQuestion: (questionId: string) => api.get<AdminQuestionReport[]>(`/admin/question-reports/question/${questionId}`),
+  updateReport: (id: string, body: { status: ReportStatus; adminNote?: string }) => api.patch<AdminQuestionReport>(`/admin/question-reports/${id}`, body),
+  closeQuestionReports: (questionId: string, body: { status: 'resolved' | 'dismissed'; adminNote: string }) =>
+    api.postWithMessage<{ updated: number }>(`/admin/question-reports/question/${questionId}/close`, body),
+
+  // Machine translation (English -> Hindi)
+  translateStatus: () => api.get<{ enabled: boolean; provider: string }>('/admin/translate/status'),
+  translate: async (texts: string[]) => (await api.post<{ translations: string[] }>('/admin/translate', { texts })).translations,
+  bulkTranslateQuestions: (questionIds: string[], overwrite = false) =>
+    api.postWithMessage<{ translated: number; skipped: number; failed: number }>('/admin/questions/bulk-translate', { questionIds, overwrite }),
 
   // Attempts & results
   attempts: (params: Params) => api.page<AdminAttempt>('/admin/attempts', params),

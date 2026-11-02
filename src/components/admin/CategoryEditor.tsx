@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { adminApi } from '@/features/admin/admin.api';
 import { useAdminMutation } from '@/features/admin/hooks/useAdminMutation';
@@ -12,6 +12,7 @@ import { Button } from '../common/Button';
 import { Checkbox, Input, Textarea } from '../common/Input';
 import { Modal } from '../common/Modal';
 import { Select } from '../common/Select';
+import { SingleImageUploader } from './MediaUploader';
 
 const schema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(120),
@@ -24,6 +25,7 @@ const schema = z.object({
   parentId: z.string(),
   description: z.string().max(2000),
   icon: z.string(),
+  imageUrl: z.string(),
   isActive: z.boolean(),
 });
 type FormValues = z.infer<typeof schema>;
@@ -43,6 +45,7 @@ export function CategoryEditor({ open, onClose, moduleType, category, parentId, 
     register,
     handleSubmit,
     reset,
+    control,
     setError,
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
@@ -57,6 +60,7 @@ export function CategoryEditor({ open, onClose, moduleType, category, parentId, 
       parentId: category ? (category.parentId ?? '') : (parentId ?? ''),
       description: category?.description ?? '',
       icon: category?.icon ?? '',
+      imageUrl: category?.imageUrl ?? '',
       isActive: category ? category.isActive : true,
     });
   }, [open, category, parentId, reset, setFormError]);
@@ -106,6 +110,7 @@ export function CategoryEditor({ open, onClose, moduleType, category, parentId, 
         <Input label="URL slug" hint="Leave empty to generate from the name" error={errors.slug?.message} {...register('slug')} />
         <Select label="Parent category" placeholder="- None (top level) -" options={parentOptions.filter((o) => !blocked.has(o.value))} error={errors.parentId?.message} {...register('parentId')} />
         <Select label="Icon" placeholder="Automatic" options={Object.keys(CATEGORY_ICONS).map((k) => ({ value: k, label: k }))} {...register('icon')} />
+        <Controller control={control} name="imageUrl" render={({ field }) => <SingleImageUploader label="Image (optional)" folder="categories" value={field.value} onChange={field.onChange} hint="Shown on category cards instead of the icon" />} />
         <Textarea label="Description" rows={3} error={errors.description?.message} {...register('description')} />
         <Checkbox label="Active" description="Inactive categories are hidden from students." {...register('isActive')} />
       </form>

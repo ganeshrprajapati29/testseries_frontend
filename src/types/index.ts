@@ -38,6 +38,7 @@ export interface CategoryNode {
   depth: number;
   description: string;
   icon: string;
+  imageUrl?: string;
   sortOrder: number;
   isActive: boolean;
   status: 'active' | 'inactive' | 'archived';
@@ -45,6 +46,7 @@ export interface CategoryNode {
   children: CategoryNode[];
   seriesCount?: number;
   testCount?: number;
+  questionCount?: number;
   paperCount?: number;
 }
 
@@ -55,9 +57,18 @@ export interface Breadcrumb {
   path: string;
 }
 
+/** Hindi version of a series / test (typed by the admin or machine translated). */
+export interface HindiText {
+  title?: string;
+  description?: string;
+  instructions?: string;
+  highlights?: string[];
+}
+
 export interface SeriesSummary {
   _id: string;
   title: string;
+  hi?: HindiText;
   slug: string;
   description: string;
   coverImage: string;
@@ -83,6 +94,7 @@ export interface MyAttemptsInfo {
 export interface SeriesTest {
   _id: string;
   title: string;
+  hi?: HindiText;
   slug: string;
   description: string;
   testType: TestType;
@@ -97,6 +109,8 @@ export interface SeriesTest {
   languageOptions: Language[];
   paperYear: number | null;
   questionCount: number;
+  hasQuestionPaperPdf?: boolean;
+  hasSolutionPdf?: boolean;
   locked: boolean;
   myAttempts: MyAttemptsInfo;
 }
@@ -108,12 +122,15 @@ export interface SeriesDetail extends Omit<SeriesSummary, 'testCount' | 'freeTes
   hasAccess: boolean;
   isEnrolled: boolean;
   enrollmentExpiresAt: string | null;
-  tests: SeriesTest[];
+  totalTests: number;
+  freeTestCount: number;
+  typeCounts: Record<string, number>;
 }
 
 export interface TestDetail {
   _id: string;
   title: string;
+  hi?: HindiText;
   slug: string;
   description: string;
   instructions: string;
@@ -141,6 +158,32 @@ export interface TestDetail {
   attemptsLeft: number | null;
   inProgressAttemptId: string | null;
   myAttempts: { _id: string; status: AttemptStatus; attemptNumber: number; finalScore: number | null; submittedAt: string | null }[];
+  pdfs?: {
+    questionPaper: { fileName: string; size: number; canDownload: boolean } | null;
+    solutions: { fileName: string; size: number; canDownload: boolean } | null;
+  };
+  canViewPaper?: boolean;
+  paperLockedReason?: string;
+}
+
+export interface PdfRef {
+  key: string;
+  fileName: string;
+  size: number;
+}
+
+export interface PrintablePaper {
+  title: string;
+  paperName: string;
+  paperYear: number | null;
+  testType: TestType;
+  durationMinutes: number;
+  marksPerCorrect: number;
+  negativeMarks: number;
+  totalMarks: number;
+  languageOptions: Language[];
+  instructions: string;
+  questions: (SolutionQuestionBase & { number: number; correctOption: OptionKey })[];
 }
 
 export interface ExamOption {
@@ -153,6 +196,8 @@ export interface ExamQuestion {
   id: string;
   questionText: string;
   imageUrl: string;
+  /** All question figures (imageUrl first). */
+  images: string[];
   options: ExamOption[];
   translations: { language: Language; questionText: string; options: { key: OptionKey; text: string }[] }[];
   subject: string;
@@ -236,9 +281,17 @@ export interface ResultData {
   subjectBreakdown?: SubjectBreakdown[];
 }
 
+export interface SolutionQuestionBase extends ExamQuestion {
+  explanation: string;
+  explanationImages: string[];
+  translations: { language: Language; questionText: string; options: { key: OptionKey; text: string }[]; explanation: string }[];
+  difficulty: Difficulty;
+}
+
 export interface SolutionQuestion extends ExamQuestion {
   number: number;
   explanation: string;
+  explanationImages: string[];
   translations: { language: Language; questionText: string; options: { key: OptionKey; text: string }[]; explanation: string }[];
   difficulty: Difficulty;
   correctOption: OptionKey;
@@ -305,12 +358,23 @@ export interface Question {
   language: Language;
   translations: { language: Language; questionText: string; options: { key: OptionKey; text: string }[]; explanation: string }[];
   imageUrl: string;
+  images: string[];
+  explanationImages: string[];
+  categoryIds?: string[];
+  categories?: QuestionCategory[];
   sourceExam: string;
   sourceYear: number | null;
   tags: string[];
   isActive: boolean;
   usedInTests?: number;
   createdAt: string;
+}
+
+export interface QuestionCategory {
+  _id: string;
+  name: string;
+  label: string;
+  moduleType: ModuleType;
 }
 
 export type SiteSettings = {
@@ -331,3 +395,17 @@ export type SiteSettings = {
   defaultExamInstructions: string;
   registrationOpen: boolean;
 };
+
+export type ReportReason = 'wrong_answer' | 'wrong_question' | 'wrong_options' | 'typo' | 'translation' | 'image' | 'other';
+export type ReportStatus = 'open' | 'resolved' | 'dismissed';
+
+/** A student's own report of a question in one attempt. */
+export interface MyQuestionReport {
+  questionId: string;
+  reason: ReportReason;
+  comment: string;
+  status: ReportStatus;
+  adminNote: string;
+  reportedAt: string;
+  resolvedAt: string | null;
+}

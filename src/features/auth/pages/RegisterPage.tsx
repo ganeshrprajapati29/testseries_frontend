@@ -30,7 +30,7 @@ export default function RegisterPage() {
   const onSubmit = handleSubmit(async ({ name, email, mobile, password }) => {
     setFormError(null);
     try {
-      await registerUser({ name, email, mobile: mobile || undefined, password });
+      await registerUser({ name, email, mobile, password });
       navigate(safeRedirect(params.get('from'), ROUTES.dashboard), { replace: true });
     } catch (err) {
       handle(err);
@@ -57,7 +57,7 @@ export default function RegisterPage() {
       <form onSubmit={onSubmit} noValidate className="space-y-4">
         <Input label="Full name" autoComplete="name" required error={errors.name?.message} {...register('name')} />
         <Input label="Email address" type="email" autoComplete="email" required error={errors.email?.message} {...register('email')} />
-        <Input label="Mobile number" type="tel" autoComplete="tel" inputMode="numeric" hint="Optional" error={errors.mobile?.message} {...register('mobile')} />
+        <Input label="Mobile number" type="tel" autoComplete="tel" inputMode="numeric" maxLength={14} required placeholder="10 digit mobile number" hint="Used for exam updates and account recovery" error={errors.mobile?.message} {...register('mobile')} />
         <Input label="Password" type="password" autoComplete="new-password" required hint="At least 8 characters with a letter and a number" error={errors.password?.message} {...register('password')} />
         <Input label="Confirm password" type="password" autoComplete="new-password" required error={errors.confirmPassword?.message} {...register('confirmPassword')} />
         <div>

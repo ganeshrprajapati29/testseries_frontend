@@ -34,6 +34,11 @@ export function TestSeriesCard({ series }: { series: SeriesSummary }) {
             {series.title}
           </Link>
         </h3>
+        {series.hi?.title && (
+          <p lang="hi" className="mt-0.5 line-clamp-1 text-sm text-slate-500">
+            {series.hi.title}
+          </p>
+        )}
         <ul className="mt-3 space-y-1.5 text-sm text-slate-600">
           <li className="flex items-center gap-2">
             <FileText className="h-4 w-4 text-brand-500" /> {pluralize(series.testCount, 'test')}

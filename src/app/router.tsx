@@ -1,4 +1,5 @@
-import { lazy } from 'react';
+import { lazy, Suspense } from 'react';
+import { Loader } from '@/components/common/Loader';
 import { createBrowserRouter, Outlet } from 'react-router-dom';
 import { GuestOnly, ProtectedRoute } from '@/components/common/ProtectedRoute';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
@@ -16,7 +17,6 @@ const TestSeriesDetailPage = lazy(() => import('@/features/test-series/pages/Tes
 const TestDetailPage = lazy(() => import('@/features/test-series/pages/TestDetailPage'));
 const PYQsHomePage = lazy(() => import('@/features/pyqs/pages/PYQsHomePage'));
 const PYQCategoryPage = lazy(() => import('@/features/pyqs/pages/PYQCategoryPage'));
-const PYQSubjectPage = lazy(() => import('@/features/pyqs/pages/PYQSubjectPage'));
 const PYQPaperPage = lazy(() => import('@/features/pyqs/pages/PYQPaperPage'));
 // Auth
 const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'));
@@ -34,6 +34,7 @@ const ExamInstructionsPage = lazy(() => import('@/features/examination/pages/Exa
 const ExamPage = lazy(() => import('@/features/examination/pages/ExamPage'));
 const ExamResultPage = lazy(() => import('@/features/examination/pages/ExamResultPage'));
 const SolutionsPage = lazy(() => import('@/features/examination/pages/SolutionsPage'));
+const PrintPaperPage = lazy(() => import('@/features/examination/pages/PrintPaperPage'));
 // Admin
 const AdminLoginPage = lazy(() => import('@/features/admin/pages/AdminLoginPage'));
 const AdminDashboard = lazy(() => import('@/features/admin/pages/AdminDashboard'));
@@ -46,10 +47,19 @@ const AdminQuestionsPage = lazy(() => import('@/features/admin/pages/AdminQuesti
 const AdminPYQsPage = lazy(() => import('@/features/admin/pages/AdminPYQsPage'));
 const AdminImportsPage = lazy(() => import('@/features/admin/pages/AdminImportsPage'));
 const AdminStudentsPage = lazy(() => import('@/features/admin/pages/AdminStudentsPage'));
+const AdminQuestionViewPage = lazy(() => import('@/features/admin/pages/AdminQuestionViewPage'));
+const AdminManualPage = lazy(() => import('@/features/admin/pages/AdminManualPage'));
+const AdminAccountPage = lazy(() => import('@/features/admin/pages/AdminAccountPage'));
+const AdminReportsPage = lazy(() => import('@/features/admin/pages/AdminReportsPage'));
 const AdminAttemptsPage = lazy(() => import('@/features/admin/pages/AdminAttemptsPage'));
 const AdminResultsPage = lazy(() => import('@/features/admin/pages/AdminResultsPage'));
 const AdminSettingsPage = lazy(() => import('@/features/admin/pages/AdminSettingsPage'));
 const AdminAuditLogsPage = lazy(() => import('@/features/admin/pages/AdminAuditLogsPage'));
+
+/** Pages rendered outside a layout need their own Suspense boundary for lazy loading. */
+function Suspended({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<Loader fullScreen />}>{children}</Suspense>;
+}
 
 function Root() {
   return (
@@ -74,8 +84,7 @@ export const router = createBrowserRouter([
           { path: 'tests/:slug', element: <TestDetailPage /> },
           { path: 'pyqs', element: <PYQsHomePage /> },
           { path: 'pyqs/paper/:slug', element: <PYQPaperPage /> },
-          { path: 'pyqs/:exam', element: <PYQCategoryPage /> },
-          { path: 'pyqs/:exam/:subject', element: <PYQSubjectPage /> },
+          { path: 'pyqs/*', element: <PYQCategoryPage /> },
           { path: 'login', element: <GuestOnly><LoginPage /></GuestOnly> },
           { path: 'register', element: <GuestOnly><RegisterPage /></GuestOnly> },
           { path: 'forgot-password', element: <ForgotPasswordPage /> },
@@ -104,10 +113,21 @@ export const router = createBrowserRouter([
               { path: 'profile', element: <ProfilePage /> },
             ],
           },
-          { path: 'exam/:attemptId', element: <ExamPage /> },
+          { path: 'exam/:attemptId', element: <Suspended><ExamPage /></Suspended> },
+          { path: 'tests/:slug/paper', element: <Suspended><PrintPaperPage /></Suspended> },
         ],
       },
-      { path: 'admin/login', element: <GuestOnly admin><AdminLoginPage /></GuestOnly> },
+      { path: 'admin/login', element: <GuestOnly admin><Suspended><AdminLoginPage /></Suspended></GuestOnly> },
+      {
+        path: 'admin/tests/:id/paper',
+        element: (
+          <ProtectedRoute role="admin">
+            <Suspended>
+              <PrintPaperPage admin />
+            </Suspended>
+          </ProtectedRoute>
+        ),
+      },
       { path: 'admin/forgot-password', element: <ForgotPasswordPage admin /> },
       { path: 'admin/reset-password', element: <ResetPasswordPage admin /> },
       {
@@ -124,7 +144,11 @@ export const router = createBrowserRouter([
               { path: 'tests', element: <AdminTestsPage /> },
               { path: 'tests/:id', element: <AdminTestDetailPage /> },
               { path: 'questions', element: <AdminQuestionsPage /> },
+              { path: 'questions/:id', element: <AdminQuestionViewPage /> },
               { path: 'pyqs', element: <AdminPYQsPage /> },
+              { path: 'question-reports', element: <AdminReportsPage /> },
+              { path: 'account', element: <AdminAccountPage /> },
+              { path: 'manual', element: <AdminManualPage /> },
               { path: 'imports', element: <AdminImportsPage /> },
               { path: 'students', element: <AdminStudentsPage /> },
               { path: 'attempts', element: <AdminAttemptsPage /> },

@@ -15,7 +15,7 @@ export function CategoryGrid({ categories, isLoading, linkFor = (c) => categoryU
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {categories.map((c) => (
-        <CategoryCard key={c._id} to={linkFor(c)} name={c.name} slug={c.slug} icon={c.icon} children={c.children} subtitle={c.children.length ? undefined : c.description || undefined} />
+        <CategoryCard key={c._id} to={linkFor(c)} name={c.name} slug={c.slug} icon={c.icon} imageUrl={c.imageUrl} children={c.children} subtitle={c.children.length ? undefined : c.description || undefined} />
       ))}
     </div>
   );

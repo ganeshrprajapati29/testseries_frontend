@@ -12,5 +12,6 @@ export const authApi = {
   forgotPassword: (email: string) => api.postWithMessage<null>('/auth/forgot-password', { email }),
   resetPassword: (token: string, password: string) => api.postWithMessage<null>('/auth/reset-password', { token, password }),
   changePassword: (currentPassword: string, newPassword: string) => api.postWithMessage<null>('/auth/change-password', { currentPassword, newPassword }),
+  changeEmail: (currentPassword: string, newEmail: string) => api.postWithMessage<{ user: User }>('/auth/change-email', { currentPassword, newEmail }),
   updateProfile: (input: { name?: string; mobile?: string; preferredLanguage?: 'en' | 'hi' }) => api.patch<{ user: User }>('/users/me', input),
 };

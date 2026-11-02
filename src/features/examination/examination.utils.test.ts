@@ -50,6 +50,7 @@ describe('localize', () => {
     id: '1',
     questionText: 'Capital of India?',
     imageUrl: '',
+    images: [],
     subject: '',
     topic: '',
     options: [

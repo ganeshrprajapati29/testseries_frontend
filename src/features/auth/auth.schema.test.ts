@@ -4,7 +4,7 @@ import { safeRedirect } from '@/lib/utils';
 import { formatClock, formatScore } from '@/lib/formatters';
 
 describe('auth schemas', () => {
-  const valid = { name: 'Asha Verma', email: 'asha@example.com', mobile: '', password: 'Passw0rd1', confirmPassword: 'Passw0rd1', acceptTerms: true as const };
+  const valid = { name: 'Asha Verma', email: 'asha@example.com', mobile: '9876543210', password: 'Passw0rd1', confirmPassword: 'Passw0rd1', acceptTerms: true as const };
 
   it('accepts a valid registration', () => {
     expect(registerSchema.safeParse(valid).success).toBe(true);
@@ -14,6 +14,8 @@ describe('auth schemas', () => {
     expect(registerSchema.safeParse({ ...valid, password: 'password', confirmPassword: 'password' }).success).toBe(false);
     expect(registerSchema.safeParse({ ...valid, confirmPassword: 'Different1' }).success).toBe(false);
     expect(registerSchema.safeParse({ ...valid, mobile: '12345' }).success).toBe(false);
+    expect(registerSchema.safeParse({ ...valid, mobile: '' }).success).toBe(false);
+    expect(registerSchema.safeParse({ ...valid, mobile: '+91 9876543210' }).success).toBe(true);
     expect(registerSchema.safeParse({ ...valid, mobile: '9876543210' }).success).toBe(true);
   });
 

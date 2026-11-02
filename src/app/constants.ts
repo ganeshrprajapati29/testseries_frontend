@@ -26,8 +26,10 @@ export const instructionsUrl = (slug: string) => `/tests/${slug}/instructions`;
 export const examUrl = (attemptId: string) => `/exam/${attemptId}`;
 export const resultUrl = (attemptId: string) => `/results/${attemptId}`;
 export const solutionsUrl = (attemptId: string) => `/results/${attemptId}/solutions`;
-export const pyqExamUrl = (exam: string) => `/pyqs/${exam}`;
-export const pyqSubjectUrl = (exam: string, subject: string) => `/pyqs/${exam}/${subject}`;
+/** Any level of the PYQ tree by slug path, e.g. "nda", "nda/maths" or "capf/2025/history". */
+export const pyqCategoryUrl = (path: string) => `/pyqs/${path}`;
+export const pyqExamUrl = (exam: string) => pyqCategoryUrl(exam);
+export const pyqSubjectUrl = (exam: string, subject: string) => pyqCategoryUrl(`${exam}/${subject}`);
 export const pyqPaperUrl = (slug: string) => `/pyqs/paper/${slug}`;
 
 export const QUERY_KEYS = {

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Archive, ArrowDown, ArrowUp, ChevronDown, ChevronRight, Eye, EyeOff, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { CategoryEditor } from '@/components/admin/CategoryEditor';
 import { StatusBadge } from '@/components/admin/StatusBadge';
 import { PageHeader } from '@/components/common/Badge';
@@ -67,6 +68,9 @@ export function CategoryManager({ moduleType }: { moduleType: ModuleType }) {
           <span className="text-xs text-slate-500">
             {moduleType === 'PYQS' ? `${node.testCount ?? 0} papers` : `${node.seriesCount ?? 0} series • ${node.testCount ?? 0} tests`}
           </span>
+          <Link to={`/admin/questions?category=${node._id}`} className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700 hover:bg-brand-100" title="View questions in this category">
+            {node.questionCount ?? 0} questions
+          </Link>
           <StatusBadge status={node.status} />
           <div className="flex items-center gap-0.5">
             <IconBtn label="Move up" onClick={() => move(nodes, i, -1)} disabled={i === 0 || reorder.isPending}>

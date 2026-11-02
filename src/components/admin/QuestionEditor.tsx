@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { adminApi } from '@/features/admin/admin.api';
-import { ImageField } from '@/features/admin/components/formHelpers';
 import { useAdminMutation } from '@/features/admin/hooks/useAdminMutation';
 import { FormAlert } from '@/features/auth/components/AuthCard';
 import { useServerErrors } from '@/features/auth/hooks/useServerErrors';
@@ -13,12 +12,17 @@ import type { OptionKey, Question } from '@/types';
 import { Button } from '../common/Button';
 import { Input, Textarea } from '../common/Input';
 import { Modal } from '../common/Modal';
+import { CategoryPicker } from './CategoryPicker';
+import { ImageUploader, SingleImageUploader } from './MediaUploader';
 import { Select } from '../common/Select';
+import { useToast } from '../common/Toast';
+import { TranslateButton, useTranslationEnabled } from './HindiTranslate';
 
 const schema = z
   .object({
     questionText: z.string().trim().min(1, 'Question text is required').max(10000),
-    imageUrl: z.string(),
+    images: z.array(z.string()).max(10),
+    explanationImages: z.array(z.string()).max(10),
     options: z.array(z.object({ text: z.string().max(2000), imageUrl: z.string(), hiText: z.string().max(2000) })).min(2).max(6),
     correctIndex: z.coerce.number<number>().int().min(0),
     explanation: z.string().max(10000),
@@ -29,8 +33,10 @@ const schema = z
     sourceExam: z.string().max(120),
     sourceYear: z.string().regex(/^(|\d{4})$/, 'Enter a 4 digit year'),
     tags: z.string().max(600),
+    categoryIds: z.array(z.string()).max(10),
     hiQuestionText: z.string().max(10000),
     hiExplanation: z.string().max(10000),
+    autoTranslate: z.boolean(),
   })
   .refine((d) => d.options.every((o) => o.text.trim() || o.imageUrl), { message: 'Every option needs text or an image', path: ['options'] })
   .refine((d) => d.correctIndex < d.options.length, { message: 'Select the correct option', path: ['correctIndex'] });
@@ -43,11 +49,13 @@ interface QuestionEditorProps {
   question?: Question | null;
   /** When creating from a test page, the new question is attached to this test. */
   attachToTestId?: string;
-  defaults?: Partial<Pick<Question, 'subject' | 'sourceExam'>> & { sourceYear?: number | null };
+  defaults?: Partial<Pick<Question, 'subject' | 'sourceExam'>> & { sourceYear?: number | null; categoryIds?: string[] };
   onSaved?: (q: Question) => void;
 }
 
 export function QuestionEditor({ open, onClose, question, attachToTestId, defaults, onSaved }: QuestionEditorProps) {
+  // Parents often pass a new defaults object on every render; only react to real changes.
+  const defaultsKey = JSON.stringify(defaults ?? {});
   const isEdit = !!question;
   const [tab, setTab] = useState<'en' | 'hi'>('en');
   const {
@@ -56,11 +64,15 @@ export function QuestionEditor({ open, onClose, question, attachToTestId, defaul
     reset,
     control,
     watch,
+    setValue,
+    getValues,
     setError,
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
   const { fields, append, remove } = useFieldArray({ control, name: 'options' });
   const { formError, setFormError, handle } = useServerErrors(setError);
+  const translationOn = useTranslationEnabled();
+  const toast = useToast();
 
   useEffect(() => {
     if (!open) return;
@@ -72,7 +84,8 @@ export function QuestionEditor({ open, onClose, question, attachToTestId, defaul
       : Array.from({ length: 4 }, () => ({ text: '', imageUrl: '', hiText: '' }));
     reset({
       questionText: question?.questionText ?? '',
-      imageUrl: question?.imageUrl ?? '',
+      images: [question?.imageUrl ?? '', ...(question?.images ?? [])].filter(Boolean).slice(0, 10),
+      explanationImages: question?.explanationImages ?? [],
       options,
       correctIndex: question ? Math.max(0, question.options.findIndex((o) => o.key === question.correctOption)) : 0,
       explanation: question?.explanation ?? '',
@@ -83,17 +96,22 @@ export function QuestionEditor({ open, onClose, question, attachToTestId, defaul
       sourceExam: question?.sourceExam ?? defaults?.sourceExam ?? '',
       sourceYear: question?.sourceYear ? String(question.sourceYear) : defaults?.sourceYear ? String(defaults.sourceYear) : '',
       tags: question?.tags.join(', ') ?? '',
+      categoryIds: question ? (question.categoryIds ?? question.categories?.map((c) => c._id) ?? []) : (defaults?.categoryIds ?? []),
       hiQuestionText: hi?.questionText ?? '',
       hiExplanation: hi?.explanation ?? '',
+      autoTranslate: true,
     });
-  }, [open, question, defaults, reset, setFormError]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, question, defaultsKey, reset, setFormError]);
 
   const save = useAdminMutation(
     async (v: FormValues) => {
       const keys = OPTION_LABELS.slice(0, v.options.length) as unknown as OptionKey[];
       const body = {
         questionText: v.questionText,
-        imageUrl: v.imageUrl,
+        imageUrl: v.images[0] ?? '',
+        images: v.images.slice(1),
+        explanationImages: v.explanationImages,
         options: v.options.map((o, i) => ({ key: keys[i], text: o.text.trim(), imageUrl: o.imageUrl })),
         correctOption: keys[v.correctIndex],
         explanation: v.explanation,
@@ -103,6 +121,7 @@ export function QuestionEditor({ open, onClose, question, attachToTestId, defaul
         language: v.language,
         sourceExam: v.sourceExam.trim(),
         sourceYear: v.sourceYear ? Number(v.sourceYear) : null,
+        categoryIds: v.categoryIds,
         tags: v.tags
           .split(',')
           .map((t) => t.trim())
@@ -111,6 +130,7 @@ export function QuestionEditor({ open, onClose, question, attachToTestId, defaul
         translations: v.hiQuestionText.trim()
           ? [{ language: 'hi', questionText: v.hiQuestionText.trim(), options: v.options.map((o, i) => ({ key: keys[i], text: o.hiText.trim() })).filter((o) => o.text), explanation: v.hiExplanation.trim() }]
           : [],
+        autoTranslate: v.autoTranslate && translationOn && v.language === 'en',
       };
       const saved = isEdit ? await adminApi.updateQuestion(question!._id, body) : await adminApi.createQuestion(body);
       if (!isEdit && attachToTestId) await adminApi.addTestQuestions(attachToTestId, [saved._id]);
@@ -120,6 +140,8 @@ export function QuestionEditor({ open, onClose, question, attachToTestId, defaul
       success: isEdit ? 'Question updated' : attachToTestId ? 'Question created and added to the test' : 'Question created',
       silentError: true,
       onSuccess: (q) => {
+        const warning = (q as Question & { translationWarning?: string | null }).translationWarning;
+        if (warning) toast.info(warning);
         onSaved?.(q);
         onClose();
       },
@@ -127,6 +149,7 @@ export function QuestionEditor({ open, onClose, question, attachToTestId, defaul
   );
 
   const correctIndex = Number(watch('correctIndex'));
+  const language = watch('language');
   const onSubmit = handleSubmit(
     (v) => {
       setFormError(null);
@@ -144,6 +167,12 @@ export function QuestionEditor({ open, onClose, question, attachToTestId, defaul
       dismissible={!save.isPending}
       footer={
         <>
+          {translationOn && language === 'en' && (
+            <label className="mr-auto flex items-center gap-2 text-sm text-slate-600" title="Fills the Hindi version from English on save when it is empty">
+              <input type="checkbox" className="accent-brand-600" {...register('autoTranslate')} />
+              Auto-translate to Hindi
+            </label>
+          )}
           <Button variant="outline" onClick={onClose} disabled={save.isPending}>
             Cancel
           </Button>
@@ -157,15 +186,31 @@ export function QuestionEditor({ open, onClose, question, attachToTestId, defaul
       <div className="mb-4 flex gap-1 rounded-lg bg-slate-100 p-1 text-sm font-semibold">
         {(['en', 'hi'] as const).map((l) => (
           <button key={l} type="button" onClick={() => setTab(l)} className={cn('flex-1 rounded-md py-1.5', tab === l ? 'bg-white shadow-sm' : 'text-slate-500')}>
-            {l === 'en' ? 'Primary content' : 'Hindi translation (optional)'}
+            {l === 'en' ? 'Primary content' : translationOn ? 'Hindi (auto-filled if empty)' : 'Hindi translation (optional)'}
           </button>
         ))}
       </div>
       <form onSubmit={onSubmit} noValidate className="space-y-5">
         {tab === 'en' ? (
           <>
+            <Controller
+              control={control}
+              name="categoryIds"
+              render={({ field }) => (
+                <CategoryPicker
+                  label="Category / sub-category"
+                  value={field.value}
+                  onChange={field.onChange}
+                  hint="The question is saved in these categories (e.g. Defence › CDS › Maths). It also appears under every parent category."
+                />
+              )}
+            />
             <Textarea label="Question" rows={4} required error={errors.questionText?.message} {...register('questionText')} />
-            <Controller control={control} name="imageUrl" render={({ field }) => <ImageField label="Question image (optional)" value={field.value} onChange={field.onChange} />} />
+            <Controller
+              control={control}
+              name="images"
+              render={({ field }) => <ImageUploader label="Question images (optional)" value={field.value} onChange={field.onChange} max={10} hint="Add one or more figures, diagrams or charts. The first image is shown first." />}
+            />
             <div>
               <span className="label">Options - select the correct answer</span>
               <div className="space-y-2">
@@ -178,7 +223,7 @@ export function QuestionEditor({ open, onClose, question, attachToTestId, defaul
                       </label>
                       <div className="flex-1 space-y-2">
                         <Textarea rows={2} placeholder={`Option ${OPTION_LABELS[i]}`} aria-label={`Option ${OPTION_LABELS[i]} text`} {...register(`options.${i}.text`)} />
-                        <Controller control={control} name={`options.${i}.imageUrl`} render={({ field }) => <ImageField label="" value={field.value} onChange={field.onChange} />} />
+                        <Controller control={control} name={`options.${i}.imageUrl`} render={({ field }) => <SingleImageUploader value={field.value} onChange={field.onChange} compact />} />
                       </div>
                       {fields.length > 2 && (
                         <button type="button" onClick={() => remove(i)} className="rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600" aria-label={`Remove option ${OPTION_LABELS[i]}`}>
@@ -198,6 +243,11 @@ export function QuestionEditor({ open, onClose, question, attachToTestId, defaul
               )}
             </div>
             <Textarea label="Explanation" rows={3} hint="Shown with the solution after the test" {...register('explanation')} />
+            <Controller
+              control={control}
+              name="explanationImages"
+              render={({ field }) => <ImageUploader label="Explanation images (optional)" value={field.value} onChange={field.onChange} max={10} />}
+            />
             <div className="grid gap-4 sm:grid-cols-3">
               <Input label="Subject" placeholder="e.g. Polity" {...register('subject')} />
               <Input label="Topic" placeholder="e.g. Fundamental Rights" {...register('topic')} />
@@ -225,7 +275,19 @@ export function QuestionEditor({ open, onClose, question, attachToTestId, defaul
           </>
         ) : (
           <>
-            <p className="rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-800">Students can switch to Hindi during the test when the test offers Hindi and a translation exists.</p>
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-brand-50 px-3 py-2">
+              <p className="text-xs text-brand-800">
+                Students can switch to Hindi during the test when the test offers Hindi. {translationOn && 'Click translate to fill this from English, then review.'}
+              </p>
+              <TranslateButton
+                getTexts={() => [getValues('questionText'), getValues('explanation'), ...getValues('options').map((o) => o.text)]}
+                onTranslated={([q, e, ...opts]) => {
+                  setValue('hiQuestionText', q ?? '', { shouldDirty: true });
+                  setValue('hiExplanation', e ?? '', { shouldDirty: true });
+                  opts.forEach((t, i) => setValue(`options.${i}.hiText`, t ?? '', { shouldDirty: true }));
+                }}
+              />
+            </div>
             <Textarea label="Question (Hindi)" rows={4} lang="hi" {...register('hiQuestionText')} />
             {fields.map((f, i) => (
               <Input key={f.id} label={`Option ${OPTION_LABELS[i]} (Hindi)`} lang="hi" {...register(`options.${i}.hiText`)} />

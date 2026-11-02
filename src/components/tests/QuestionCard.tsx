@@ -1,5 +1,6 @@
 import { localize } from '@/features/examination/examination.utils';
 import { cn, OPTION_LABELS } from '@/lib/utils';
+import { ImageGallery } from '../common/ImageGallery';
 import type { ExamQuestion, Language, OptionKey } from '@/types';
 
 interface QuestionCardProps {
@@ -28,7 +29,7 @@ export function QuestionCard({ question, number, total, language, selected, onSe
         </div>
       </div>
       <p className="prose-text text-[15px] sm:text-base">{text.questionText}</p>
-      {question.imageUrl && <img src={question.imageUrl} alt="Question figure" className="mt-4 max-h-80 rounded-lg border border-slate-200 object-contain" />}
+      <ImageGallery images={question.images?.length ? question.images : [question.imageUrl]} className="mt-4 max-w-2xl" />
 
       <div className="mt-6 space-y-3" role="radiogroup" aria-label={`Options for question ${number}`}>
         {question.options.map((opt, index) => {
@@ -52,7 +53,7 @@ export function QuestionCard({ question, number, total, language, selected, onSe
               </span>
               <span className="flex-1 pt-0.5">
                 <span className="prose-text text-sm sm:text-[15px]">{text.optionText(opt.key)}</span>
-                {opt.imageUrl && <img src={opt.imageUrl} alt={`Option ${OPTION_LABELS[index]}`} className="mt-2 max-h-40 rounded border border-slate-200" />}
+                {opt.imageUrl && <img src={opt.imageUrl} alt={`Option ${OPTION_LABELS[index]}`} loading="lazy" className="mt-2 max-h-40 rounded border border-slate-200 bg-white" />}
               </span>
             </button>
           );

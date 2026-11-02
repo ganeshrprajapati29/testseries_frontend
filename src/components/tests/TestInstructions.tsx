@@ -36,6 +36,13 @@ export function TestInstructions({ test, generalInstructions }: { test: TestDeta
         </div>
       )}
 
+      {test.hi?.instructions && test.languageOptions.includes('hi') && (
+        <div lang="hi">
+          <h3 className="mb-2 font-semibold">परीक्षा संबंधी निर्देश (हिंदी)</h3>
+          <p className="prose-text rounded-lg bg-amber-50/70 p-4 text-sm">{test.hi.instructions}</p>
+        </div>
+      )}
+
       {general.length > 0 && (
         <div>
           <h3 className="mb-2 font-semibold">General instructions</h3>

@@ -15,28 +15,40 @@ interface ModalProps {
   dismissible?: boolean;
 }
 
+/** Open dialogs, innermost last - Escape only closes the top one when dialogs are stacked. */
+const openStack: string[] = [];
+
 const sizes = { sm: 'max-w-md', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl', full: 'max-w-6xl' };
 
 export function Modal({ open, onClose, title, description, children, footer, size = 'md', dismissible = true }: ModalProps) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
+  // Latest callbacks in refs, so re-rendering the parent never re-runs the open/close effect below.
+  const closeRef = useRef(onClose);
+  const dismissibleRef = useRef(dismissible);
+  useEffect(() => {
+    closeRef.current = onClose;
+    dismissibleRef.current = dismissible;
+  });
 
   useEffect(() => {
     if (!open) return;
     const previous = document.activeElement as HTMLElement | null;
+    openStack.push(titleId);
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && dismissible) onClose();
+      if (e.key === 'Escape' && dismissibleRef.current && openStack[openStack.length - 1] === titleId) closeRef.current();
     };
     document.addEventListener('keydown', onKey);
     const overflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     setTimeout(() => panelRef.current?.querySelector<HTMLElement>('input, select, textarea, button:not([data-close])')?.focus(), 30);
     return () => {
+      openStack.splice(openStack.lastIndexOf(titleId), 1);
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = overflow;
       previous?.focus?.();
     };
-  }, [open, onClose, dismissible]);
+  }, [open, titleId]);
 
   if (!open) return null;
 

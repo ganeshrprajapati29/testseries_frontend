@@ -17,10 +17,10 @@ export function AdminHeader({ onMenu }: { onMenu: () => void }) {
         </Link>
       </div>
       <div className="flex items-center gap-3">
-        <div className="hidden text-right sm:block">
+        <Link to="/admin/account" className="hidden text-right hover:opacity-80 sm:block" title="My Account">
           <p className="text-sm font-semibold">{user?.name}</p>
           <p className="text-xs text-slate-500">{user?.email}</p>
-        </div>
+        </Link>
         <Badge tone={user?.role === 'superadmin' ? 'purple' : 'blue'}>{user?.role}</Badge>
         <button
           type="button"

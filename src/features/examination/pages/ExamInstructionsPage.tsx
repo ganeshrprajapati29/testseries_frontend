@@ -53,6 +53,11 @@ export default function ExamInstructionsPage() {
       <div className="card p-6 sm:p-8">
         <p className="text-sm font-semibold tracking-wide text-brand-600 uppercase">Instructions</p>
         <h1 className="mt-1 text-2xl font-bold">{test.title}</h1>
+        {test.hi?.title && (
+          <p lang="hi" className="text-slate-600">
+            {test.hi.title}
+          </p>
+        )}
         <div className="mt-6">
           <TestInstructions test={test} generalInstructions={settings?.defaultExamInstructions} />
         </div>

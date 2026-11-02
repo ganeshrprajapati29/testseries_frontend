@@ -75,7 +75,7 @@ export default function AdminTestSeriesPage() {
                 <Link to={`/admin/test-series/${r._id}`} className="font-semibold text-slate-900 hover:text-brand-700">
                   {r.title}
                 </Link>
-                <p className="text-xs text-slate-500">{typeof r.categoryId === 'object' ? r.categoryId?.name : ''}</p>
+                <p className="text-xs text-slate-500">{r.categoryLabel || (typeof r.categoryId === 'object' ? r.categoryId?.name : '')}</p>
               </div>
             ),
           },

@@ -4,6 +4,7 @@ import { CategoryBreadcrumb } from '@/components/categories/CategoryBreadcrumb';
 import { CategoryCard } from '@/components/categories/CategoryCard';
 import { ErrorState } from '@/components/common/ErrorState';
 import { Loader } from '@/components/common/Loader';
+import { CategoryTests } from '@/features/test-series/components/CategoryTests';
 import { SeriesResults } from '@/features/test-series/components/SeriesResults';
 import { useResolvedCategory } from '../categories.api';
 
@@ -42,6 +43,9 @@ export default function CategoryDetailPage() {
         </div>
       )}
 
+      <CategoryTests categoryId={category._id} categoryName={category.name} />
+
+      <h2 className="mb-3 text-xl font-bold">Test series</h2>
       <SeriesResults categoryId={category._id} />
     </div>
   );

@@ -6,11 +6,14 @@ import { Pagination } from '@/components/common/Pagination';
 import { SearchInput } from '@/components/common/SearchInput';
 import { TableSkeleton } from '@/components/common/Skeleton';
 import { Badge } from '@/components/common/Badge';
+import { CategoryChips, useFlatCategories } from '@/components/admin/CategoryPicker';
 import { adminApi } from '../admin.api';
 import { useAdminMutation } from '../hooks/useAdminMutation';
 
 /** Select questions from the bank and append them to a test. */
-export function QuestionPicker({ open, onClose, testId }: { open: boolean; onClose: () => void; testId: string }) {
+export function QuestionPicker({ open, onClose, testId, categoryId }: { open: boolean; onClose: () => void; testId: string; categoryId?: string }) {
+  const { flat } = useFlatCategories(open);
+  const [category, setCategory] = useState(categoryId ?? '');
   const [search, setSearch] = useState('');
   const [subject, setSubject] = useState('');
   const [difficulty, setDifficulty] = useState('');
@@ -18,7 +21,7 @@ export function QuestionPicker({ open, onClose, testId }: { open: boolean; onClo
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const facets = useQuery({ queryKey: ['admin', 'question-facets'], queryFn: adminApi.questionFacets, enabled: open });
-  const params = { page, limit: 15, search, subject, difficulty, excludeTestId: testId };
+  const params = { page, limit: 15, search, subject, difficulty, category, excludeTestId: testId };
   const { data, isLoading } = useQuery({ queryKey: ['admin', 'questions', 'picker', params], queryFn: () => adminApi.questions(params), enabled: open, placeholderData: (p) => p });
 
   const add = useAdminMutation(() => adminApi.addTestQuestions(testId, [...selected]), {
@@ -69,6 +72,16 @@ export function QuestionPicker({ open, onClose, testId }: { open: boolean; onClo
           placeholder="Search question text..."
           className="flex-1"
         />
+        <select className="field sm:w-64" value={category} onChange={(e) => (setCategory(e.target.value), setPage(1))} aria-label="Category">
+          <option value="">All categories</option>
+          <option value="none">Uncategorized</option>
+          {flat.map((c) => (
+            <option key={c.id} value={c.id}>
+              {'  '.repeat(c.depth)}
+              {c.depth === 0 ? `${c.moduleType === 'PYQS' ? 'PYQ: ' : ''}${c.name}` : c.name} ({c.questionCount})
+            </option>
+          ))}
+        </select>
         <select className="field sm:w-44" value={subject} onChange={(e) => (setSubject(e.target.value), setPage(1))} aria-label="Subject">
           <option value="">All subjects</option>
           {facets.data?.subjects.map((s) => (
@@ -113,6 +126,7 @@ export function QuestionPicker({ open, onClose, testId }: { open: boolean; onClo
                   <div className="min-w-0 flex-1">
                     <p className="line-clamp-2 text-sm text-slate-800">{q.questionText}</p>
                     <div className="mt-1 flex flex-wrap gap-1.5">
+                      <CategoryChips categories={q.categories} max={2} />
                       {q.subject && <Badge tone="blue">{q.subject}</Badge>}
                       {q.topic && <Badge>{q.topic}</Badge>}
                       <Badge tone={q.difficulty === 'hard' ? 'red' : q.difficulty === 'easy' ? 'green' : 'amber'}>{q.difficulty}</Badge>

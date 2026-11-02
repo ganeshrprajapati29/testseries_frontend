@@ -8,6 +8,7 @@ import { ErrorState } from '@/components/common/ErrorState';
 import { LanguageSelector } from '@/components/common/LanguageSelector';
 import { Loader } from '@/components/common/Loader';
 import { QuestionReview } from '@/components/tests/QuestionReview';
+import { ReportQuestionButton, ReportReply, useMyReports } from '@/components/tests/ReportQuestion';
 import { formatScore } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import type { Language, SolutionQuestion } from '@/types';
@@ -29,6 +30,7 @@ export default function SolutionsPage() {
   const [lang, setLang] = useState<Language | null>(null);
   const { data, isLoading, error, refetch } = useQuery({ queryKey: ['student', 'solutions', attemptId], queryFn: () => examinationApi.solutions(attemptId) });
 
+  const reports = useMyReports(attemptId);
   const counts = useMemo(() => Object.fromEntries(FILTERS.map((f) => [f.key, data?.questions.filter(f.test).length ?? 0])), [data]);
 
   if (isLoading) return <Loader fullScreen />;
@@ -91,7 +93,13 @@ export default function SolutionsPage() {
       {visible.length ? (
         <div className="space-y-5">
           {visible.map((q) => (
-            <QuestionReview key={q.number} q={q} language={language} />
+            <QuestionReview
+              key={q.number}
+              q={q}
+              language={language}
+              actions={<ReportQuestionButton attemptId={attemptId} questionId={q.id} questionNumber={q.number} report={reports.get(q.id)} />}
+              footer={<ReportReply report={reports.get(q.id)} />}
+            />
           ))}
         </div>
       ) : (

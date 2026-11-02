@@ -1,23 +1,19 @@
 import { useQuery } from '@tanstack/react-query';
-import { CalendarDays, CheckCircle2, FileText, Languages, Lock } from 'lucide-react';
-import { useState } from 'react';
+import { CalendarDays, CheckCircle2, FileText, Languages } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { CategoryBreadcrumb } from '@/components/categories/CategoryBreadcrumb';
 import { Badge } from '@/components/common/Badge';
-import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { Loader } from '@/components/common/Loader';
-import { TestCard } from '@/components/tests/TestCard';
 import { useAuth } from '@/features/auth/useAuth';
-import { formatCurrency, formatDate, TEST_TYPE_LABELS } from '@/lib/formatters';
-import { cn } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/lib/formatters';
 import { EnrollButton } from '../components/EnrollButton';
+import { SeriesTests } from '../components/SeriesTests';
 import { testSeriesApi } from '../testSeries.api';
 
 export default function TestSeriesDetailPage() {
   const { slug = '' } = useParams();
   const { user } = useAuth();
-  const [type, setType] = useState('ALL');
   const { data: series, isLoading, error, refetch } = useQuery({ queryKey: ['series', 'detail', slug, user?.id], queryFn: () => testSeriesApi.detail(slug) });
 
   if (isLoading) return <Loader fullScreen />;
@@ -28,9 +24,7 @@ export default function TestSeriesDetailPage() {
       </div>
     );
 
-  const types = ['ALL', ...new Set(series.tests.map((t) => t.testType))];
-  const tests = type === 'ALL' ? series.tests : series.tests.filter((t) => t.testType === type);
-  const freeCount = series.tests.filter((t) => t.isFree).length;
+  const freeCount = series.freeTestCount;
   const discount = series.accessType === 'paid' && series.mrp > series.price ? Math.round(((series.mrp - series.price) / series.mrp) * 100) : 0;
 
   return (
@@ -45,9 +39,14 @@ export default function TestSeriesDetailPage() {
             {series.examName && <Badge tone="blue">{series.examName}</Badge>}
           </div>
           <h1 className="mt-3 max-w-3xl text-3xl font-extrabold text-white sm:text-4xl">{series.title}</h1>
+          {series.hi?.title && (
+            <p lang="hi" className="mt-1 max-w-3xl text-lg text-brand-100">
+              {series.hi.title}
+            </p>
+          )}
           <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-brand-100">
             <span className="flex items-center gap-1.5">
-              <FileText className="h-4 w-4" /> {series.tests.length} tests {freeCount > 0 && series.accessType === 'paid' && `(${freeCount} free)`}
+              <FileText className="h-4 w-4" /> {series.totalTests} tests {freeCount > 0 && series.accessType === 'paid' && `(${freeCount} free)`}
             </span>
             <span className="flex items-center gap-1.5">
               <Languages className="h-4 w-4" /> {series.languageOptions.map((l) => (l === 'hi' ? 'Hindi' : 'English')).join(' & ')}
@@ -79,34 +78,7 @@ export default function TestSeriesDetailPage() {
             </section>
           )}
 
-          <section>
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold">Tests in this series</h2>
-              {types.length > 2 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {types.map((t) => (
-                    <button key={t} type="button" onClick={() => setType(t)} className={cn('rounded-full px-3 py-1 text-xs font-semibold', type === t ? 'bg-brand-600 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200')}>
-                      {t === 'ALL' ? 'All' : (TEST_TYPE_LABELS[t] ?? t)}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            {!series.hasAccess && series.accessType === 'paid' && (
-              <p className="mb-3 flex items-center gap-2 rounded-lg bg-accent-50 px-4 py-2.5 text-sm text-accent-800">
-                <Lock className="h-4 w-4" /> Purchase this series to unlock all tests. Free tests can be attempted right away.
-              </p>
-            )}
-            {tests.length ? (
-              <div className="space-y-3">
-                {tests.map((t) => (
-                  <TestCard key={t._id} test={t} isLoggedIn={!!user} />
-                ))}
-              </div>
-            ) : (
-              <EmptyState title="Tests coming soon" message="Tests for this series will be published shortly." />
-            )}
-          </section>
+          <SeriesTests series={series} />
         </div>
 
         <aside className="lg:sticky lg:top-24 lg:self-start">
